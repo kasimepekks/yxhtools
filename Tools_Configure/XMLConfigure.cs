@@ -27,19 +27,30 @@ namespace YXH_Tools_Files.Tools_Configure
         /// <returns>string</returns>
         public static string? YXHGetXMLConfigSection(this string section,string key)
         {
-            IDictionary sectiondict = (IDictionary)ConfigurationManager.GetSection(section);
-            string[] keys = new string[sectiondict.Keys.Count];
-            string[] values = new string[sectiondict.Values.Count];
-            sectiondict.Keys.CopyTo(keys, 0);
-            sectiondict.Values.CopyTo(values, 0);
-            if (keys.Contains(key)){
-                var keyindex = keys.ToList().IndexOf(key);
-                return values[keyindex];
-            }
-            else
+            try
             {
-                return null;
+                IDictionary sectiondict = (IDictionary)ConfigurationManager.GetSection(section);
+                string[] keys = new string[sectiondict.Keys.Count];
+                string[] values = new string[sectiondict.Values.Count];
+                sectiondict.Keys.CopyTo(keys, 0);
+                sectiondict.Values.CopyTo(values, 0);
+                if (keys.Contains(key))
+                {
+                    var keyindex = keys.ToList().IndexOf(key);
+                    return values[keyindex];
+                }
+                else
+                {
+                    return null;
+                }
             }
+            catch (Exception ex)
+            {
+
+                Console.WriteLine($"此{section}下的{key}栏配置错误，请修正"+ex.Message);
+                throw;
+            }
+           
         }
     }
 }

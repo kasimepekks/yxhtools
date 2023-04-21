@@ -18,6 +18,7 @@ namespace YXH_Tools_Files.Tools_CSV
         /// <param name="targetPath">输出目录</param>
         public static void YXHDatatable2CSV_V1(this DataTable dt, string targetPath)
         {
+           
             FileInfo? fi = new FileInfo(targetPath);
             if (fi.Directory != null && !fi.Directory.Exists)
             {
@@ -258,49 +259,58 @@ namespace YXH_Tools_Files.Tools_CSV
         /// <returns>DataTable</returns>
         public static DataTable YXHCSV2DataTable(this string fileName)
         {
-            DataTable dt = new DataTable();
-            FileStream fs = new FileStream(fileName, System.IO.FileMode.Open, System.IO.FileAccess.Read);
-            StreamReader sr = new StreamReader(fs, Encoding.UTF8);
-            //记录每次读取的一行记录
-            string? strLine;
-            //记录每行记录中的各字段内容
-            string[] aryLine;
-            //标示列数
-            int columnCount = 0;
-            //标示是否是读取的第一行
-            bool IsFirst = true;
-
-            //逐行读取CSV中的数据
-            while ((strLine = sr.ReadLine()) != null)
+            try
             {
+                DataTable dt = new DataTable();
+                FileStream fs = new FileStream(fileName, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+                StreamReader sr = new StreamReader(fs, Encoding.UTF8);
+                //记录每次读取的一行记录
+                string? strLine;
+                //记录每行记录中的各字段内容
+                string[] aryLine;
+                //标示列数
+                int columnCount = 0;
+                //标示是否是读取的第一行
+                bool IsFirst = true;
 
-                aryLine = strLine.Split(',');
-                if (IsFirst == true)
+                //逐行读取CSV中的数据
+                while ((strLine = sr.ReadLine()) != null)
                 {
-                    IsFirst = false;
-                    columnCount = aryLine.Length;
-                    //创建列
-                    for (int i = 0; i < columnCount; i++)
+
+                    aryLine = strLine.Split(',');
+                    if (IsFirst == true)
                     {
-                        DataColumn dc = new DataColumn(aryLine[i]);
-                        dt.Columns.Add(dc);
+                        IsFirst = false;
+                        columnCount = aryLine.Length;
+                        //创建列
+                        for (int i = 0; i < columnCount; i++)
+                        {
+                            DataColumn dc = new DataColumn(aryLine[i]);
+                            dt.Columns.Add(dc);
+                        }
+                    }
+                    else
+                    {
+
+                        DataRow dr = dt.NewRow();
+                        for (int j = 0; j < columnCount; j++)
+                        {
+                            dr[j] = aryLine[j];
+                        }
+                        dt.Rows.Add(dr);
                     }
                 }
-                else
-                {
 
-                    DataRow dr = dt.NewRow();
-                    for (int j = 0; j < columnCount; j++)
-                    {
-                        dr[j] = aryLine[j];
-                    }
-                    dt.Rows.Add(dr);
-                }
+                sr.Close();
+                fs.Close();
+                return dt;
             }
-
-            sr.Close();
-            fs.Close();
-            return dt;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"读取此{fileName}文件路径时发生错误"+ex.Message);
+                throw;
+            }
+            
         }
         /// <summary>
         /// 打印datatable到console
@@ -418,6 +428,80 @@ namespace YXH_Tools_Files.Tools_CSV
         public static async Task YXHSaveCSVfromListOneTime(string filepath, List<string> newlist)
         {
             await File.WriteAllLinesAsync(filepath, newlist);
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="filepath"></param>
+        /// <param name="selectcollumnnumber"></param>
+        /// <returns></returns>
+        public static List<double>? YXHReadOneCollumnfromCSV2List(string filepath,int selectcollumnnumber)
+        {
+            if (File.Exists(filepath))
+            {
+                Encoding encoding = Encoding.Default;
+                List<double> selectList = new List<double>();
+                //string starttime = name.Split('-')[1];
+                using FileStream fs = new FileStream(filepath, System.IO.FileMode.Open, System.IO.FileAccess.Read, FileShare.ReadWrite);
+                StreamReader sr = new StreamReader(fs, encoding);
+                DataTable dt = new DataTable();
+                string? strLine = "";
+                //记录每行记录中的各字段内容
+                string[]? aryLine = null;
+                string[]? tableHead = null;
+                int columnCount = 0;
+                ////标示列数
+                //int columnCount = 0;
+
+                //标示是否是读取的第一行
+                bool IsFirst = true;
+
+                while ((strLine = sr.ReadLine()) != null)
+                {
+                    if (IsFirst == true)
+                    {
+                        //改为小写，去掉下划线，空格和N
+                        tableHead = strLine.Replace("_", "").Replace("N", "").Replace(" ", "").ToLower().Split(',');
+                        IsFirst = false;
+                        columnCount = tableHead.Length;
+                        //说明选取的collumn超过了原有的数量
+                        if (columnCount <= selectcollumnnumber)
+                        {
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        aryLine = strLine.Split(',');
+                        //判断是否需要读取数据，因为有降低采样数
+                        var success = double.TryParse(aryLine[selectcollumnnumber], out double number);
+                        if ((!double.IsNaN(number)))
+                        {
+                            selectList.Add(number);
+                        }
+                        else
+                        {
+                            selectList.Add(-1.0);
+                        }
+
+
+                    }
+                }
+                sr.Close();
+                sr.Dispose();
+                fs.Close();
+                fs.Dispose();
+                return selectList;
+                //存在 
+            }
+            else
+            {
+                //不存在 
+                return null;
+            }
+           
         }
     }
 }

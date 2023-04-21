@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using YXH_Tools_Files.Tools_CSV;
+using YXH_Tools_Files.Tools_List;
 
 namespace YXH_Tools_Files.Tools_EdgeComputing
 {
@@ -12,7 +14,7 @@ namespace YXH_Tools_Files.Tools_EdgeComputing
     public static class FileInfoOperation_Combination
     {
         /// <summary>
-        /// （专用于边缘采集器）生成合并好的csv文件名
+        /// （专用于边缘采集器）生成合并好的csv文件名（每30分钟模式）
         /// </summary>
         /// <param name="file">FileInfo类型文件</param>
         /// <returns>string合并后文件名</returns>
@@ -74,6 +76,49 @@ namespace YXH_Tools_Files.Tools_EdgeComputing
                             totallist[i].Add(file);
                         }
                     }
+                }
+            }
+            return totallist;
+        }
+
+        /// <summary>
+        /// （专用于边缘采集器）按照基准里程来分类并返回分类好的CSV文件组
+        /// </summary>
+        /// <param name="files">文件列表</param>
+        /// <param name="permileage">里程分割标准值</param>
+        /// <param name="spdindex">速度通道在csv文件里的index</param>
+        /// <returns></returns>
+        public static List<List<FileInfo>>  YXHClassifyFilebyMileage(this FileInfo[] files,int permileage,int spdindex)
+        {
+            
+            //创建存储每个文件的里程数的list
+            List<double> mileages=new List<double>();
+            foreach (var file in files)
+            {
+                //获得速度list
+               var spdlist= CSVOperator.YXHReadOneCollumnfromCSV2List(file.FullName, spdindex);
+                //获得timelist
+                var timelist = CSVOperator.YXHReadOneCollumnfromCSV2List(file.FullName, 0);
+                if (spdlist != null && timelist != null)
+                {
+                    mileages.Add(Mileage.ReturnSumDistanceperFile(spdlist, timelist));//把每个文件的里程数添加到这个mileageslist里面
+                }
+            }
+            //获得按照基准里程分好的每一段的起始文件index和终止文件index
+            var indexlist=Mileage.GetIndexRanges(mileages, permileage);
+            //创建一个totallist，用于存储每permileage公里数的文件list
+            List<List<FileInfo>> totallist = new List<List<FileInfo>>();
+            //有几个indexlist类就添加几个到totallist
+            for (int i = 0; i < indexlist.Count; i++)
+            {
+                totallist.Add(new List<FileInfo>());
+            }
+            for (int j = 0; j < indexlist.Count; j++)
+            {
+                for (int i = 0; i < files.Length; i++)
+                {
+                    if (i >= indexlist[j][0]&& i <= indexlist[j][1])//利用index里的边界来划分files
+                    totallist[j].Add(files[i]);
                 }
             }
             return totallist;
@@ -153,7 +198,7 @@ namespace YXH_Tools_Files.Tools_EdgeComputing
             return totallist;
         }
         /// <summary>
-        /// （专用于边缘采集器）按照txt来合并csv后的csv文件名
+        /// （专用于边缘采集器）按照txt来合并csv后的csv文件名，第一个csv和最后一个csv文件名组合而成
         /// </summary>
         /// <param name="file1">List里第一个file</param>
         /// <param name="file2">List里最后一个file</param>
@@ -170,8 +215,9 @@ namespace YXH_Tools_Files.Tools_EdgeComputing
         /// <param name="directorypath">日期文件夹路径</param>
         public static void YXHAddTxt( string directorypath)
         {
-            string txtname = directorypath.Split('\\')[directorypath.Length - 1]+ "_done.txt";
-            string txtpath =Path.Combine(directorypath,txtname);
+            Directory.CreateDirectory(directorypath);
+            var txtname = directorypath.Split('\\');
+            string txtpath = Path.Combine(directorypath, txtname[txtname.Length-1]+"_done.txt");
             FileStream fs = new FileStream(txtpath, FileMode.Append);
             StreamWriter? wr = null;
             wr = new StreamWriter(fs);
