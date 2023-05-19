@@ -159,8 +159,9 @@ namespace YXH_Tools_Files.Tools_Excute
             //获取指定合并路径下所有已经存在的子文件夹名
             var targetlist = subtargetdirectorieslist.Select(s => s.Name).ToArray();
             DirectoryInfo[] specialdirectory;
-            //如为null，则表明需要合并所有的originalpath下的子文件夹，如不为null，则表明需要合并指定的日期文件夹
-            if (configuredfolders != null)
+            
+            //如为null或者为all，则表明需要合并所有的originalpath下的子文件夹，如不为null，则表明需要合并指定的日期文件夹
+            if (configuredfolders != null && !configuredfolders.Contains("all"))
             {
                 specialdirectory = subdirectorieslist.Where(s => configuredfolders.Contains(s.Name)).ToArray();
             }
@@ -258,7 +259,7 @@ namespace YXH_Tools_Files.Tools_Excute
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine("YXHGetCombinedFileName方法发生错误" + ex.Message);
                 return "";
             }
           
@@ -280,14 +281,14 @@ namespace YXH_Tools_Files.Tools_Excute
                         CSVOperator.YXHList2CSV(csvlist, outputpath);
                     }
                 }
-                else
-                {
-                    Console.WriteLine("输出文件路径为空，请检查！");
-                }
+                //else
+                //{
+                //    Console.WriteLine("输出文件路径为空，请检查！");
+                //}
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message); ;
+                Console.WriteLine("YXHExcuteCombinationPerClassify方法发生错误" + ex.Message); ;
             }
         
         }
@@ -303,39 +304,54 @@ namespace YXH_Tools_Files.Tools_Excute
         /// <param name="spdindex"></param>
         public static void YXHExcuteCombinationAll(string originalpath, string combinedpath, string[] configuredfolders, string combinetype, int permileage, int spdindex,int threadsnum)
         {
-            Stopwatch timer = new Stopwatch();
-            timer.Start();
-            //先创建输出文件夹
-            Directory.CreateDirectory(combinedpath);
-            //获得需要合并的源数据日期文件夹列表
-            var ds=YXHGetProcessedFolders(originalpath, combinedpath, configuredfolders);
-            foreach (var d in ds)
+            try
             {
-                Console.WriteLine("开始合并文件夹名为" + d.Name + "的文件，请稍等片刻");
-              
-                //获得分类好的文件列表
-                var classifiedlist=YXHGetClassifyFileListperFolder(d,combinetype,permileage, spdindex);
-                Console.WriteLine("已完成分类文件列表");
-
-
-                //启动多线程
-                ParallelOptions options = new ParallelOptions();
-                options.MaxDegreeOfParallelism = threadsnum;//支持threadsnum个并发执行,控制数量
-                Parallel.ForEach(classifiedlist, options, c =>
+                //先创建输出文件夹
+                Directory.CreateDirectory(combinedpath);
+                //获得需要合并的源数据日期文件夹列表
+                var ds = YXHGetProcessedFolders(originalpath, combinedpath, configuredfolders);
+                foreach (var d in ds)
                 {
-                    //获得输出的文件路径
-                    var outputpath = YXHGetCombinedFileName(d, c, combinedpath, combinetype);
-                    //执行合并csv动作
-                    YXHExcuteCombinationPerClassify(c, outputpath);
+                    Stopwatch timer = new Stopwatch();
+                    timer.Start();
+                    Console.WriteLine("开始合并文件夹名为" + d.Name + "的文件，请稍等片刻");
 
-                });
-                timer.Stop();
-                //获得输出日期文件夹路径
-                var dateoutputpath= Path.Combine(combinedpath, d.Name);
-                //添加done.txt文件
-                FileInfoOperation_Combination.YXHAddTxt(dateoutputpath);
-                Console.WriteLine("完成此次操作工花费了"+timer.Elapsed.TotalMinutes.ToString("0.00") + "分");
+                    //获得分类好的文件列表
+                    var classifiedlist = YXHGetClassifyFileListperFolder(d, combinetype, permileage, spdindex);
+                    Console.WriteLine("已完成" + d.Name + "分类文件列表");
+
+                    //启动多线程
+                    ParallelOptions options = new ParallelOptions();
+                    options.MaxDegreeOfParallelism = threadsnum;//支持threadsnum个并发执行,控制数量
+                    Console.WriteLine($"{d.Name}下共有{classifiedlist.Count}个类别");
+                    var r = Parallel.ForEach(classifiedlist, options, c =>
+                    {
+                        
+                        //获得输出的文件路径
+                        var outputpath = YXHGetCombinedFileName(d, c, combinedpath, combinetype);
+                        //执行合并csv动作
+                        YXHExcuteCombinationPerClassify(c, outputpath);
+                        if(outputpath != null&& outputpath !="")
+                        {
+                            Console.WriteLine($"已完成{outputpath}的文件的合并");
+                        }
+                        
+                    });
+
+                    timer.Stop();
+                    //获得输出日期文件夹路径
+                    var dateoutputpath = Path.Combine(combinedpath, d.Name);
+                    //添加done.txt文件
+                    FileInfoOperation_Combination.YXHAddTxt(dateoutputpath);
+                    Console.WriteLine("完成日期为：" + d.Name + "的合并操作共花费了" + timer.Elapsed.TotalMinutes.ToString("0.00") + "分");
+                }
             }
+            catch (Exception ex)
+            {
+
+                Console.WriteLine(ex.Message); ;
+            }
+           
         }
     }
 }

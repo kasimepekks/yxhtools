@@ -312,6 +312,77 @@ namespace YXH_Tools_Files.Tools_CSV
             }
             
         }
+
+
+        /// <summary>
+        /// 专用于分离数据库的工况循环数的方法，需要知道规范的值，才能进行此规范的分离，而不是之前的所有的规范都放进来
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="standardtype"></param>
+        /// <returns></returns>
+        public static DataTable YXHCSV2DataTablebyStandardtype(this string fileName,int standardtype)
+        {
+            try
+            {
+                DataTable dt = new DataTable();
+                FileStream fs = new FileStream(fileName, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+                StreamReader sr = new StreamReader(fs, Encoding.UTF8);
+                //记录每次读取的一行记录
+                string? strLine;
+                //记录每行记录中的各字段内容
+                string[] aryLine;
+                //标示列数
+                int columnCount = 0;
+                //标示是否是读取的第一行
+                bool IsFirst = true;
+
+                //逐行读取CSV中的数据
+                while ((strLine = sr.ReadLine()) != null)
+                {
+
+                    aryLine = strLine.Split(',');
+                    if (IsFirst == true)
+                    {
+                        IsFirst = false;
+                        columnCount = aryLine.Length;
+                        //创建列
+                        for (int i = 0; i < columnCount; i++)
+                        {
+                            DataColumn dc = new DataColumn(aryLine[i]);
+                            dt.Columns.Add(dc);
+                        }
+                    }
+                    else
+                    {
+
+                       
+                        //先判断这一行中第四列里的standard是否等于传过来的参数值，如果相等就提取，不相等就不提取
+
+                        if (aryLine[3] == standardtype.ToString())
+                        {
+                            DataRow dr = dt.NewRow();
+                            for (int j = 0; j < columnCount; j++)
+                            {
+                                dr[j] = aryLine[j];
+
+                            }
+                            dt.Rows.Add(dr);
+                        }
+
+                    }
+                }
+
+                sr.Close();
+                fs.Close();
+                return dt;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"读取此{fileName}文件路径时发生错误" + ex.Message);
+                throw;
+            }
+
+        }
         /// <summary>
         /// 打印datatable到console
         /// </summary>
@@ -475,15 +546,20 @@ namespace YXH_Tools_Files.Tools_CSV
                     else
                     {
                         aryLine = strLine.Split(',');
-                        //判断是否需要读取数据，因为有降低采样数
+                        
                         var success = double.TryParse(aryLine[selectcollumnnumber], out double number);
                         if ((!double.IsNaN(number)))
                         {
+                            //如果速度小于0，则设为0
+                            if(number < 0)
+                            {
+                                number = 0;
+                            }
                             selectList.Add(number);
                         }
                         else
                         {
-                            selectList.Add(-1.0);
+                            selectList.Add(0);
                         }
 
 
