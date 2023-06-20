@@ -293,6 +293,8 @@ namespace YXH_Tools_Files.Tools_Excute
         
         }
 
+
+
         /// <summary>
         /// （专用于边缘采集器）根据combinetype来执行合并操作
         /// </summary>

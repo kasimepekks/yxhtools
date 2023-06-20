@@ -465,6 +465,7 @@ namespace YXH_Tools_Files.Tools_CSV
                     IsFirst = false;
                     if (index == 0)
                     {
+                        //只有第一个文件才会读取标题行
                         list.Add(aryLine);
                     }
                 }
@@ -480,6 +481,8 @@ namespace YXH_Tools_Files.Tools_CSV
             return list;
 
         }
+
+       
         /// <summary>
         /// 一次性的读取csv到List<string>
         /// </summary>
@@ -503,7 +506,7 @@ namespace YXH_Tools_Files.Tools_CSV
 
 
         /// <summary>
-        /// 
+        /// 一次性的读取csv特定列号的数据到List（小心这个方法里会把小于0的值设为0）
         /// </summary>
         /// <param name="filepath"></param>
         /// <param name="selectcollumnnumber"></param>
@@ -517,7 +520,7 @@ namespace YXH_Tools_Files.Tools_CSV
                 //string starttime = name.Split('-')[1];
                 using FileStream fs = new FileStream(filepath, System.IO.FileMode.Open, System.IO.FileAccess.Read, FileShare.ReadWrite);
                 StreamReader sr = new StreamReader(fs, encoding);
-                DataTable dt = new DataTable();
+               
                 string? strLine = "";
                 //记录每行记录中的各字段内容
                 string[]? aryLine = null;
@@ -546,7 +549,6 @@ namespace YXH_Tools_Files.Tools_CSV
                     else
                     {
                         aryLine = strLine.Split(',');
-                        
                         var success = double.TryParse(aryLine[selectcollumnnumber], out double number);
                         if ((!double.IsNaN(number)))
                         {
@@ -561,7 +563,6 @@ namespace YXH_Tools_Files.Tools_CSV
                         {
                             selectList.Add(0);
                         }
-
 
                     }
                 }
@@ -578,6 +579,165 @@ namespace YXH_Tools_Files.Tools_CSV
                 return null;
             }
            
+        }
+
+
+        /// <summary>
+        /// 一次性的读取csv特定列号的数据到List
+        /// </summary>
+        /// <param name="filepath"></param>
+        /// <param name="selectcollumnnumber"></param>
+        /// <returns></returns>
+        public static List<double>? YXHReadOneCollumnfromCSV2ListV2(string filepath, int selectcollumnnumber)
+        {
+            if (File.Exists(filepath))
+            {
+                Encoding encoding = Encoding.Default;
+                List<double> selectList = new List<double>();
+                //string starttime = name.Split('-')[1];
+                using FileStream fs = new FileStream(filepath, System.IO.FileMode.Open, System.IO.FileAccess.Read, FileShare.ReadWrite);
+                StreamReader sr = new StreamReader(fs, encoding);
+
+                string? strLine = "";
+                //记录每行记录中的各字段内容
+                string[]? aryLine = null;
+                string[]? tableHead = null;
+                int columnCount = 0;
+                ////标示列数
+                //int columnCount = 0;
+
+                //标示是否是读取的第一行
+                bool IsFirst = true;
+
+                while ((strLine = sr.ReadLine()) != null)
+                {
+                    if (IsFirst == true)
+                    {
+                        //改为小写，去掉下划线，空格和N
+                        tableHead = strLine.Replace("_", "").Replace("N", "").Replace(" ", "").ToLower().Split(',');
+                        IsFirst = false;
+                        columnCount = tableHead.Length;
+                        //说明选取的collumn超过了原有的数量
+                        if (columnCount <= selectcollumnnumber)
+                        {
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        aryLine = strLine.Split(',');
+                        var success = double.TryParse(aryLine[selectcollumnnumber], out double number);
+                        if ((!double.IsNaN(number)))
+                        {
+                           
+                            selectList.Add(number);
+                        }
+                        else
+                        {
+                            selectList.Add(0);
+                        }
+
+                    }
+                }
+                sr.Close();
+                sr.Dispose();
+                fs.Close();
+                fs.Dispose();
+                return selectList;
+                //存在 
+            }
+            else
+            {
+                //不存在 
+                return null;
+            }
+
+        }
+
+        /// <summary>
+        /// 一次性的读取csv多个特定列号的数据到List<List<double>>>
+        /// </summary>
+        /// <param name="filepath"></param>
+        /// <param name="selectcollumnnumber"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception">列号超出界限</exception>
+        public static async Task<List<List<double>>> YXHReadColumnsfromCSV2List(string filepath, List<int> selectcollumnnumber)
+        {
+           
+            List<List<double>> selectlists = new List<List<double>>();
+            for (int i = 0; i < selectcollumnnumber.Count; i++)
+            {
+                var list=new List<double>();
+                selectlists.Add(list);
+            }
+            await Task.Run(() => {
+               if (File.Exists(filepath))
+               {
+                   Encoding encoding = Encoding.Default;
+                   
+                   //string starttime = name.Split('-')[1];
+                   using FileStream fs = new FileStream(filepath, System.IO.FileMode.Open, System.IO.FileAccess.Read, FileShare.ReadWrite);
+                   StreamReader sr = new StreamReader(fs, encoding);
+                   string? strLine = "";
+                   //记录每行记录中的各字段内容
+                   string[]? aryLine = null;
+                   string[]? tableHead = null;
+                   int columnCount = 0;
+                   ////标示列数
+                   //int columnCount = 0;
+
+                   //标示是否是读取的第一行
+                   bool IsFirst = true;
+
+                   while ((strLine = sr.ReadLine()) != null)
+                   {
+                       if (IsFirst == true)
+                       {
+                           //改为小写，去掉下划线，空格和N
+                           tableHead = strLine.Replace("_", "").Replace("N", "").Replace(" ", "").ToLower().Split(',');
+                           IsFirst = false;
+                           columnCount = tableHead.Length;
+                          
+                          
+                       }
+                       else
+                       {
+                           //说明选取的collumn超过了原有的数量
+                           for (int i = 0; i < selectcollumnnumber.Count; i++)
+                           {
+                               if (selectcollumnnumber[i] >= 0 || selectcollumnnumber[i] < columnCount)
+                               {
+                                   aryLine = strLine.Split(',');
+                                   var success = double.TryParse(aryLine[selectcollumnnumber[i]], out double number);
+                                   if ((!double.IsNaN(number)))
+                                   {
+                                       selectlists[i].Add(number);
+                                   }
+                                   else
+                                   {
+                                       selectlists[i].Add(0);
+                                   }
+                               }
+                               else
+                               {
+                                   Console.WriteLine($"列号超出界限: {selectcollumnnumber[i]}");
+                                   throw new Exception($"列号超出界限: {selectcollumnnumber[i]}");
+                               }
+                           }
+                        
+                       }
+                   }
+                   sr.Close();
+                   sr.Dispose();
+                   fs.Close();
+                   fs.Dispose();
+                  
+                   //存在 
+               }
+
+
+           });
+            return selectlists;
         }
     }
 }
